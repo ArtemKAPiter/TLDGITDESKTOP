@@ -121,13 +121,14 @@
 
 			window.onresize = () => 
 			{
+				
 					SCALE = (canvasSpine.height/1041.11).toFixed(2);
 					
 					
 					canvas.width = canvas.clientWidth;
 					canvas.height = canvas.clientHeight;
 					var HeightUnity = ((canvas.clientHeight / 9) * 20).toFixed(0)
-					
+					alert(""+canvas.width+"\n"+canvas.height);
 					if (canvas.width > HeightUnity)
 					{
 						canvas.style.width = HeightUnity + "px";
@@ -382,14 +383,14 @@
                     bridge.game.on('visibility_state_changed', state => sendMessageToUnity('OnVisibilityStateChanged', state))
 
                     let unityLoader = document.createElement('script')
-                    unityLoader.src = 'Build/v0.68.loader.js'
+                    unityLoader.src = 'Build/v0.69.loader.js'
                     unityLoader.onload = () => {
                         createUnityInstance(
                             canvas,
                             {
-                                dataUrl: 'Build/v0.68.data',
-                                frameworkUrl: 'Build/v0.68.framework.js',
-                                codeUrl: 'Build/v0.68.wasm',
+                                dataUrl: 'Build/v0.69.data',
+                                frameworkUrl: 'Build/v0.69.framework.js',
+                                codeUrl: 'Build/v0.69.wasm',
                                 streamingAssetsUrl: 'StreamingAssets',
                                 companyName: 'BearsComGames',
                                 productName: 'CorgiTown',
