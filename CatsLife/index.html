@@ -1,122 +1,332 @@
 <!DOCTYPE html>
 <html lang="en-us">
-    <head>
-        <meta charset="utf-8">
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-        <title>Cats life</title>
-        <style>
-            html, body {
-                width: 100%;
-                height: 100%;
-                padding: 0px;
-                margin: 0px;
-            }
-            .fullscreen {
-                background: #383838;
-                width: 100%;
-                height: 100%;
-                position: absolute;
-                top: 0px;
-                left: 0px;
-            }
-            #banner-container {
-                position: absolute;
-                bottom: 0px;
-                width: 100%;
-                height: 90px;
-            }
-            #loading-overlay {
-                font-size: 20px;
-                z-index: 1;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-            }
-            #icon {
-                max-width: 120px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-            }
-            #progress-bar {
-                border-radius: 5px;
-                width: 90%;
-                max-width: 250px;
-                height: 20px;
-                background: #242424;
-                padding: 5px;
-            }
-            #progress-bar-fill {
-                border-radius: 3px;
-                width: 0%;
-                height: 100%;
-                background: #FF9A00;
-            }
-        </style>
-    </head>
-    <body>
-        <canvas id="canvas" class="fullscreen"></canvas>
-        <div id="banner-container" style="display: none"></div>
-        <div id="loading-overlay" class="fullscreen">
-            <img id="icon" src="./icon.png" />
-            <div id="progress-bar"><div id="progress-bar-fill"></div></div>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no"/>
+
+
+    <!-- Спасибо за установку Advanced Templates -->
+    <!-- Стой, не спускайся вниз. Залезь мне в сердце, а не в нижние строки код. (feat. Монеточка) -->
+
+    <style>
+      /* Убираем выделение по нажатию клавиш */
+      canvas:focus {
+        outline: none;
+      }
+      html, body {
+        /* Убираем отступы */
+        padding: 0;
+        margin: 0;
+
+        /* Отключаем скролл и лонгтап на IOS */
+        overflow: hidden;
+        -webkit-touch-callout:none;
+        -webkit-user-select:none;
+        -khtml-user-select:none;
+        -moz-user-select:none;
+        -ms-user-select:none;
+        user-select:none;
+        -webkit-tap-highlight-color:rgba(0,0,0,0);
+
+        /* Ставим высоту на 100% */
+        height: 100%;
+
+        /* Центрируем, если привязана картинка или творим магию, чтобы можно было использовать градиент */
+  	background-position-x: 50%;
+  	background-repeat: no-repeat;
+ 	background-size: cover;
+        background-attachment: fixed;
+      }
+      /* Канвас и загрузочный экран */
+      #canvas {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+      .loading_bg {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        /* Центрируем, если привязана картинка или творим магию, чтобы можно было использовать градиент */
+  	background-position-x: 50%;
+  	background-repeat: no-repeat;
+ 	background-size: cover;
+        background-attachment: fixed;
+      }
+      .loading {
+        position: absolute;
+        /*background-color:red;*/
+      }
+      .loading_bar {
+        position: absolute;
+        z-index: 6;
+        transform: translate(-50%, -50%);
+      }
+      .loading_bar_fill {
+        position: absolute;
+        z-index: 6;
+        width: 0%;
+      	height: 100%;
+        top: 0%;
+        bottom: 0%;
+        left: 0%;
+      }
+      .loading_logo {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 6;
+        pointer-events: none;
+        background-position: center;
+  	background-repeat: no-repeat;
+ 	background-size: contain;
+        background-attachment: scroll;
+      }
+      #banner-container {
+        position: absolute;
+        bottom: 0px;
+        width: 100%;
+        height: 90px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" class="canvas" tabindex="-1"></canvas>
+    <div id="banner-container" style="display: none"></div>
+    <div class="loading_bg">
+      <div class="loading">
+        <div class="loading_logo"></div>
+        <div class="loading_bar">
+          <div class="loading_bar_fill">
         </div>
-        <script src="./instant-games-bridge.js"></script>
-        <script>
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                let meta = document.createElement('meta')
-                meta.name = 'viewport'
-                meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes'
-                document.getElementsByTagName('head')[0].appendChild(meta)
-            }
+      </div>
+    </div>
+    <script src="./Files/IGB1.11.0/instant-games-bridge.js"></script>
+    <script>
+      var canvas = document.querySelector("#canvas");
+      var loading_bg = document.querySelector(".loading_bg");
+      var loading = document.querySelector(".loading");
+      var loading_bar = document.querySelector(".loading_bar");
+      var loading_bar_fill = document.querySelector(".loading_bar_fill");
+      var loading_logo = document.querySelector(".loading_logo");
+      let bannerContainer = document.getElementById('banner-container');
 
-            let canvas = document.getElementById('canvas')
-            let loadingOverlay = document.getElementById('loading-overlay')
-            let progressBarFill = document.getElementById('progress-bar-fill')
-            let bannerContainer = document.getElementById('banner-container')
+      // Подключаем ATinstance для связи Unity с браузером
+      var ATinstance = null;
 
-            const STORAGE_DATA_SEPARATOR = '{bridge_data_separator}'
-            const STORAGE_KEYS_SEPARATOR = '{bridge_keys_separator}'
-            const STORAGE_VALUES_SEPARATOR = '{bridge_values_separator}'
-            
-            
-            // utils
-            window.unityInstance = null
-            let progressBarFillingInterval = null
+      function ATinstanceEnable(callback) {
+        const checkNull = () => {
+          if(ATinstance !== null) {
+            callback();
+          } else {
+            setTimeout(checkNull, 1000);
+          }
+        };
+        checkNull();
+      }
 
-            function sendMessageToUnity(name, value) {
-                if (window.unityInstance !== null) {
-                    window.unityInstance.SendMessage('Bridge', name, value)
-                }
-            }
+      // Выключаем появление меню при правом клике мыши
+      document.addEventListener('contextmenu', event => event.preventDefault());
 
-            function onUnityLoadingProgressChanged(progress) {
-                if (progress === 0.9) {
-                    completeProgressBarFilling()
-                    return
-                }
+      // Проверяем устройство
+      var isDeviceTouch;
+      var isDeviceNavigator;
 
-                progressBarFill.style.width = `${ progress * 100 }%`
-                if (progress === 1 && progressBarFillingInterval !== null) {
-                    clearInterval(progressBarFillingInterval)
-                    progressBarFillingInterval = null
-                }
-            }
-            
-            function completeProgressBarFilling() {
+      // Определение с помощью тач
+      if('ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        isDeviceTouch = true;
+      } else {
+        isDeviceTouch = false;
+      }
+
+      // Определение с помощью navigator
+      if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        isDeviceNavigator = true; 
+      } else {
+        isDeviceNavigator = false;
+      }
+      
+      // Возвращаем фокус, если кликнули по экрану
+      window.addEventListener('pointerdown', () => {
+        window.focus();
+        canvas.focus();
+      });
+      window.addEventListener('touchstart', () => {
+        window.focus();
+        canvas.focus();
+      });
+
+
+      loading_logo.style.backgroundImage = "url('logo.png')";
+
+      // Настраиваем фон полос по бокам
+      document.body.style.backgroundImage = "url('background.png')" ;
+
+      // Настраиваем фон загрузочного экрана
+      loading_bg.style.backgroundImage = "url('background.png')" ;
+
+      function setLoading(logoPositionTop, logoPositionLeft, logoWidth, logoHeight, positionTop, positionLeft, width, height, barColor, barFillColor, barBorder, barFillBorder, barBorderRadius, barFillBorderRadius, barBackgroundImage, barBackgroundSize) {
+        // Указываем размер логотипа
+        loading_logo.style.top = logoPositionTop;
+        loading_logo.style.left = logoPositionLeft;
+
+        loading_logo.style.width = logoWidth; 
+        loading_logo.style.height = logoHeight;
+
+        loading_bar.style.top = positionTop;
+        loading_bar.style.left = positionLeft;
+
+        loading_bar.style.width = width;
+        loading_bar.style.height = height;
+
+        loading_bar.style.backgroundColor = barColor;
+        loading_bar_fill.style.backgroundColor = barFillColor;
+
+        loading_bar.style.boxShadow = barBorder;
+        loading_bar_fill.style.boxShadow = barFillBorder;
+
+        loading_bar.style.borderRadius = barBorderRadius;
+        loading_bar_fill.style.borderRadius = barFillBorderRadius;
+
+        loading_bar.style.backgroundImage = loading_bar_fill.style.backgroundImage = barBackgroundImage;
+        loading_bar.style.backgroundSize = loading_bar_fill.style.backgroundSize = barBackgroundSize;
+      }
+
+      // Фиксация разрешения
+      function lock(object, aspectRatio) {
+        if(window.innerWidth / window.innerHeight > aspectRatio) {
+          object.style.width = window.innerHeight * aspectRatio + "px";
+          object.style.height = "100%";
+        } else {
+          object.style.width = "100%";
+          object.style.height = window.innerWidth / aspectRatio + "px";
+        }
+
+        // Центрируем
+        object.style.margin = "auto";
+        object.style.top = "0";
+        object.style.left = "0";
+        object.style.bottom = "0";
+        object.style.right = "0";
+      }
+
+      // Настраиваем расположение, размер и оформление полосы с лого
+      var loading_bar_style;
+      var loadingStyleText = '4';
+
+      var loadingZeroStrings = ["0"];
+      var loadingOneStrings = ["1"];
+      var loadingTwoStrings = ["2"];
+      var loadingThreeStrings = ["3"];
+      var loadingFourStrings = ["4"];
+
+      if(loadingZeroStrings.some(i => loadingStyleText.includes(i))) {
+        loading_bar_style = 0;
+      } else if(loadingOneStrings.some(i => loadingStyleText.includes(i))) {
+        loading_bar_style = 1;
+      } else if(loadingTwoStrings.some(i => loadingStyleText.includes(i))) {
+        loading_bar_style = 2;
+      } else if(loadingThreeStrings.some(i => loadingStyleText.includes(i))) {
+        loading_bar_style = 3;
+      } else if(loadingFourStrings.some(i => loadingStyleText.includes(i))) {
+        loading_bar_style = 4;
+      } else {
+        loading_bar_style = 0;
+      }
+
+
+      // Вызываем апдейт при входе на страницу и изменений размеров окна браузера
+      function Update() {
+        if(!isDeviceTouch){lock(canvas, 9/16);}
+        if(window.innerWidth < window.innerHeight) {
+          isPortrait = true;
+          lock(loading, 9/16);
+          if(loading_bar_style == 0) {
+            // По умолчанию
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "#FFF", "#00dc15", "0px 0px 0px 7px rgba(34, 60, 80, 0.2)", "0", "8px 8px 8px 8px", "8px 8px 8px 8px", "linear-gradient(45deg, rgba(0, 0, 0, 0.25) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 75%, transparent 75%, transparent)", "15px 15px");
+          } else if(loading_bar_style == 1) {
+            // Минимализм со свечением
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "rgba(255, 255, 255, 0.1)", "#FFF", "0", "0 0 10px rgba(255, 255, 255, 0.5)", "0", "0", "0", "0");
+          } else if(loading_bar_style == 2) {
+            // Нет слов
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "2%", "0", "white", "0px 0px 0px 4px rgba(34, 60, 80, 0.2)", "0", "8px 8px 8px 8px", "8px 8px 8px 8px", "0", "0");
+          } else if(loading_bar_style == 3) {
+            // Без округлений
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "70%", "1%", "#1c2329", "#ffffff", "0", "0", "0", "0", "0", "0");
+          } else if(loading_bar_style == 4) {
+            // Округленный и не слишком длинный
+            setLoading("44%", "50%", "30%", "30%", "55%", "50%", "50%", "2.7%", "#1c2329", "#ffffff", "0", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "0", "0");
+          }
+        } else {
+          isPortrait = false;
+          lock(loading, 16/9);
+          if(loading_bar_style == 0) {
+            // По умолчанию
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "#FFF", "#00dc15", "0px 0px 0px 7px rgba(34, 60, 80, 0.2)", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "linear-gradient(45deg, rgba(0, 0, 0, 0.25) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.25) 50%, rgba(0, 0, 0, 0.25) 75%, transparent 75%, transparent)", "15px 15px");
+          } else if(loading_bar_style == 1) {
+            // Минимализм со свечением
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "rgba(255, 255, 255, 0.1)", "#FFF", "0", "0 0 10px rgba(255, 255, 255, 0.5)", "0", "0", "0", "0");
+          } else if(loading_bar_style == 2) {
+            // Нет слов
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "3%", "0", "white", "0px 0px 0px 4px rgba(34, 60, 80, 0.2)", "0", "12px 12px 12px 12px", "12px 12px 12px 12px", "0", "0");
+          } else if(loading_bar_style == 3) {
+            // Без округлений
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "70%", "2%", "#1c2329", "#ffffff", "0", "0", "0", "0", "0", "0");
+          } else if(loading_bar_style == 4) {
+            // Округленный и не слишком длинный
+            setLoading("40%", "50%", "30%", "30%", "59%", "50%", "30%", "4.4%", "#1c2329", "#ffffff", "0", "0", "16px 16px 16px 16px", "16px 16px 16px 16px", "0", "0");
+          }
+        }
+
+      }
+
+      Update();
+      window.addEventListener("resize", (event) => {
+        Update();
+      });
+
+      const STORAGE_DATA_SEPARATOR = '{bridge_data_separator}'
+      const STORAGE_KEYS_SEPARATOR = '{bridge_keys_separator}'
+      const STORAGE_VALUES_SEPARATOR = '{bridge_values_separator}'
+
+      // utils
+      window.unityInstance = null
+      let progressBarFillingInterval = null
+
+      function sendMessageToUnity(name, value) {
+        if(window.unityInstance !== null) {
+          window.unityInstance.SendMessage('Bridge', name, value)
+        }
+      }
+
+      function onUnityLoadingProgressChanged(progress) {
+        if(progress === 0.9) {
+          completeProgressBarFilling()
+          return
+        }
+
+        loading_bar_fill.style.width = `${ progress * 111.2 }%`
+        if(progress === 1 && progressBarFillingInterval !== null) {
+          clearInterval(progressBarFillingInterval)
+          progressBarFillingInterval = null
+        }
+      }
+
+      function completeProgressBarFilling() {
                 if (progressBarFillingInterval !== null) {
                     return
                 }
 
                 let currentPercent = 90
-                progressBarFill.style.width = `${ currentPercent }%`
+                loading_bar_fill.style.width = `${ currentPercent }%`
                 progressBarFillingInterval = setInterval(() => {
                     currentPercent++
                     if (currentPercent > 100) {
                         currentPercent = 100
                     }
 
-                    progressBarFill.style.width = `${ currentPercent }%`
+                    loading_bar_fill.style.width = `${ currentPercent }%`
 
                     if (currentPercent >= 100) {
                         clearInterval(progressBarFillingInterval)
@@ -124,23 +334,22 @@
                         return
                     }
                 }, 100)
-            }
+      }
 
-            window.addEventListener('pointerdown', () => {
-                window.focus()
-                canvas.focus()
-            })
+      window.addEventListener('pointerdown', () => {
+        window.focus()
+        canvas.focus()
+      })
 
+      let bridgeOptions = {
+        platforms: {
+          }
+      }
 
-            let bridgeOptions = {
-                platforms: {
-                }
-            }
-
-            // initialization
-            bridge
-                .initialize(bridgeOptions)
-                .then(() => {
+      // initialization
+      bridge
+        .initialize(bridgeOptions)
+        .then(() => {
                     bridge.advertisement.on('banner_state_changed', state => sendMessageToUnity('OnBannerStateChanged', state))
                     bridge.advertisement.on('interstitial_state_changed', state => sendMessageToUnity('OnInterstitialStateChanged', state))
                     bridge.advertisement.on('rewarded_state_changed', state => sendMessageToUnity('OnRewardedStateChanged', state))
@@ -151,14 +360,14 @@
                     }
 
                     let unityLoader = document.createElement('script')
-                    unityLoader.src = 'Build/CatsLife.loader.js'
+                    unityLoader.src = 'Build/New4.loader.js'
                     unityLoader.onload = () => {
                         createUnityInstance(
                             canvas,
                             {
-                                dataUrl: 'Build/CatsLife.data',
-                                frameworkUrl: 'Build/CatsLife.framework.js',
-                                codeUrl: 'Build/CatsLife.wasm',
+                                dataUrl: 'Build/New4.data',
+                                frameworkUrl: 'Build/New4.framework.js',
+                                codeUrl: 'Build/New4.wasm',
                                 streamingAssetsUrl: 'StreamingAssets',
                                 companyName: 'DefaultCompany',
                                 productName: 'Cats life',
@@ -169,90 +378,89 @@
                             onUnityLoadingProgressChanged)
                             .then((unityInstance) => {
                                 window.unityInstance = unityInstance
-                                loadingOverlay.remove()
+                                ATinstance = unityInstance
+                                loading_bg.remove()
                                 canvas.focus()
                             })
                             .catch((error) => {
                                 console.error(error)
-                            })
-                    }
-                    document.body.appendChild(unityLoader)
-                })
-                .catch(error => console.error(error))
-            
+          })
+        }
+        document.body.appendChild(unityLoader)
+      })
+      .catch(error => console.error(error))
 
-            // platform
-            window.getPlatformId = function() {
-                return bridge.platform.id
-            }
+      // platform
+      window.getPlatformId = function() {
+        return bridge.platform.id
+      }
 
-            window.getPlatformLanguage = function() {
-                return bridge.platform.language
-            }
+      window.getPlatformLanguage = function() {
+        return bridge.platform.language
+      }
 
-            window.getPlatformPayload = function() {
+      window.getPlatformPayload = function() {
                 let payload = bridge.platform.payload
                 if (typeof payload === 'string') {
                     return payload
                 } else {
                     return ''
                 }
-            }
+      }
 
-            window.getPlatformTld = function() {
+      window.getPlatformTld = function() {
                 let tld = bridge.platform.tld
                 if (typeof tld === 'string') {
                     return tld
                 } else {
                     return ''
                 }
-            }
+      }
 
-            window.sendMessageToPlatform = function(message) {
-                bridge.platform.sendMessage(message)
-            }
+      window.sendMessageToPlatform = function(message) {
+        bridge.platform.sendMessage(message)
+      }
+
+      // device
+      window.getDeviceType = function() {
+        return bridge.device.type
+      }
 
 
-            // device
-            window.getDeviceType = function() {
-                return bridge.device.type
-            }
+      // player
+      window.getIsPlayerAuthorizationSupported = function() {
+        return bridge.player.isAuthorizationSupported.toString()
+      }
 
+      window.getIsPlayerAuthorized = function() {
+        return bridge.player.isAuthorized.toString()
+      }
 
-            // player
-            window.getIsPlayerAuthorizationSupported = function() {
-                return bridge.player.isAuthorizationSupported.toString()
-            }
+      window.getPlayerId = function() {
+        if(bridge.player.id) {
+          return bridge.player.id.toString()
+        }
 
-            window.getIsPlayerAuthorized = function() {
-                return bridge.player.isAuthorized.toString()
-            }
+        return ''
+      }
 
-            window.getPlayerId = function() {
-                if (bridge.player.id) {
-                    return bridge.player.id.toString()
-                }
+      window.getPlayerName = function() {
+        if (bridge.player.name) {
+          return bridge.player.name.toString()
+        }
 
-                return ''
-            }
+        return ''
+      }
 
-            window.getPlayerName = function() {
-                if (bridge.player.name) {
-                    return bridge.player.name.toString()
-                }
+      window.getPlayerPhotos = function() {
+        if (bridge.player.photos.length > 0) {
+          return JSON.stringify(bridge.player.photos)
+        }
 
-                return ''
-            }
+        return ''
+      }
 
-            window.getPlayerPhotos = function() {
-                if (bridge.player.photos.length > 0) {
-                    return JSON.stringify(bridge.player.photos)
-                }
-
-                return ''
-            }
-
-            window.authorizePlayer = function(options) {
+      window.authorizePlayer = function(options) {
                 if (options) {
                     options = JSON.parse(options)
                 }
@@ -264,32 +472,30 @@
                     .catch(error => {
                         sendMessageToUnity('OnAuthorizeCompleted', 'false')
                     })
-            }
+      }
 
+      // game
+        window.getVisibilityState = function() {
+          return bridge.game.visibilityState
+      }
 
-            // game
-            window.getVisibilityState = function() {
-                return bridge.game.visibilityState
-            }
+      // storage
+      window.getStorageDefaultType = function() {
+        return bridge.storage.defaultType
+      }
 
+      window.getIsStorageSupported = function(storageType) {
+        return bridge.storage.isSupported(storageType).toString()
+      }
 
-            // storage
-            window.getStorageDefaultType = function() {
-                return bridge.storage.defaultType
-            }
+      window.getIsStorageAvailable = function(storageType) {
+        return bridge.storage.isAvailable(storageType).toString()
+      }
 
-            window.getIsStorageSupported = function(storageType) {
-                return bridge.storage.isSupported(storageType).toString()
-            }
+      window.getStorageData = function(key, storageType) {
+        let keys = key.split(STORAGE_KEYS_SEPARATOR)
 
-            window.getIsStorageAvailable = function(storageType) {
-                return bridge.storage.isAvailable(storageType).toString()
-            }
-
-            window.getStorageData = function(key, storageType) {
-                let keys = key.split(STORAGE_KEYS_SEPARATOR)
-
-                bridge.storage.get(keys, storageType)
+        bridge.storage.get(keys, storageType)
                     .then(data => {
                         if (keys.length > 1) {
                             let values = []
@@ -320,12 +526,12 @@
                             sendMessageToUnity('OnGetStorageDataSuccess', `${key}${STORAGE_DATA_SEPARATOR}${data}`)
                         }
                     })
-                    .catch(error => {
-                        sendMessageToUnity('OnGetStorageDataFailed', key)
-                    })
-            }
+        .catch(error => {
+          sendMessageToUnity('OnGetStorageDataFailed', key)
+        })
+      }
 
-            window.setStorageData = function(key, value, storageType) {
+      window.setStorageData = function(key, value, storageType) {
                 let keys = key.split(STORAGE_KEYS_SEPARATOR)
                 let values = value.split(STORAGE_VALUES_SEPARATOR)
 
@@ -336,9 +542,9 @@
                     .catch(error => {
                         sendMessageToUnity('OnSetStorageDataFailed', key)
                     })
-            }
+      }
 
-            window.deleteStorageData = function(key, storageType) {
+      window.deleteStorageData = function(key, storageType) {
                 let keys = key.split(STORAGE_KEYS_SEPARATOR)
 
                 bridge.storage.delete(keys, storageType)
@@ -348,37 +554,36 @@
                     .catch(error => {
                         sendMessageToUnity('OnDeleteStorageDataFailed', key)
                     })
-            }
+      }
 
-
-            // advertisement
-            window.getInterstitialState = function() {
+      // advertisement
+      window.getInterstitialState = function() {
                 if (bridge.advertisement.interstitialState) {
                     return bridge.advertisement.interstitialState
                 } else {
                     return ''
                 }
-            }
+      }
 
-            window.getIsBannerSupported = function() {
+      window.getIsBannerSupported = function() {
                 return bridge.advertisement.isBannerSupported.toString()
-            }
+      }
             
-            window.getMinimumDelayBetweenInterstitial = function() {
-                return bridge.advertisement.minimumDelayBetweenInterstitial.toString()
-            }
+      window.getMinimumDelayBetweenInterstitial = function() {
+        return bridge.advertisement.minimumDelayBetweenInterstitial.toString()
+      }
 
-            window.setMinimumDelayBetweenInterstitial = function(options) {
-                if (options) {
-                    options = JSON.parse(options)
-                } else {
-                    options = { }
-                }
+      window.setMinimumDelayBetweenInterstitial = function(options) {
+          if (options) {
+            options = JSON.parse(options)
+          } else {
+            options = { }
+          }
                 
-                bridge.advertisement.setMinimumDelayBetweenInterstitial(options)
-            }
+          bridge.advertisement.setMinimumDelayBetweenInterstitial(options)
+      }
 
-            window.showBanner = function(options) {
+      window.showBanner = function(options) {
                 if (options) {
                     options = JSON.parse(options)
                 } else {
@@ -398,17 +603,17 @@
                 }
 
                 bridge.advertisement.showBanner(options)
-            }
+      }
 
-            window.hideBanner = function() {
+      window.hideBanner = function() {
                 if (bridge.platform.id === bridge.PLATFORM_ID.CRAZY_GAMES || bridge.platform.id === bridge.PLATFORM_ID.GAME_DISTRIBUTION) {
                     bannerContainer.style.display = 'none'
                 }
 
                 bridge.advertisement.hideBanner()
-            }
+      }
 
-            window.showInterstitial = function(options) {
+      window.showInterstitial = function(options) {
                 if (options) {
                     options = JSON.parse(options)
                 }
@@ -418,8 +623,7 @@
 
             window.showRewarded = function() {
                 bridge.advertisement.showRewarded()
-            }
-
+      }
 
             // social
             window.getIsShareSupported = function() {
@@ -727,6 +931,6 @@
                         sendMessageToUnity('OnRemoteConfigGetFailed', '')
                     })
             }
-        </script>
-    </body>
+    </script>
+  </body>
 </html>
